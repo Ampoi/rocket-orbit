@@ -1,7 +1,44 @@
 <template>
+  <main class="bg-black text-white flex flex-row w-screen h-screen">
+    <div ref="orbitCanvas"/>
+    <div class="p-4 flex flex-col gap-4 grow">
+      <div class="flex flex-col gap-4 border-sky-500/60 text-sky-500 border-[1px] px-4 py-3 grow bg-sky-500/20 rounded-xl">
+        <div class="flex flex-col gap-4 grow">
+          <div class="flex flex-row gap-4 items-center">
+            <p class="font-chakra tracking-wider">VELOCITY</p>
+            <input
+              type="number"
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+          </div>
+          <div class="flex flex-row gap-4 items-center">
+            <p class="font-chakra tracking-wider">ANGLE</p>
+            <input
+              type="number"
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+          </div>
+          <div class="flex flex-row gap-4 items-center">
+            <p class="font-chakra tracking-wider">HEIGHT</p>
+            <input
+              type="number"
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+          </div>
+        </div>
+        <button class="px-3 py-2 rounded-lg bg-sky-500 text-white text-center font-chakra text-lg tracking-wide">
+          LAUNCH
+        </button>
+      </div>
+      <div class="border-sky-500/60 text-sky-500 border-[1px] px-4 py-3 bg-sky-500/20 rounded-xl flex flex-row gap-4">
+        <p>©︎Ampoi 2024</p>
+        <a href="https://www.fbs.osaka-u.ac.jp/labs/ishijima/Ballistic-01.html">
+          参考にしたサイト
+        </a>
+      </div>
+    </div>
+  </main>
 </template>
 <script setup lang="ts">
 import p5 from "p5"
+import { onMounted, ref } from "vue";
 
 const { sqrt, sin, cos, atan } = Math
 
@@ -9,11 +46,9 @@ const { sqrt, sin, cos, atan } = Math
 const gravitationalConstant = 6.67 * (10 ** -11) //m**3 / ( kg * (s ** -2) )
 const earthRadius = 6.37 * (10**6) //m
 const earthMass = 5.96 * (10**24) //kg
-const deltaTime = 1 //s
+const deltaTime = 0.5 //s
 
 const getGravitationalAcceleration = (height: number) => gravitationalConstant * earthMass / ( ( height + earthRadius ) ** 2 )
-
-//変数
 const getPosition = (
   height: number,
   angleFromEarth: number
@@ -54,33 +89,43 @@ const episode = () => {
   history.push(position)
 }
 
-const minimizeRate = 10 ** 4
+const minimizeRate = 10 ** 4 * 5
 
 const history: Record<"x" | "y", number>[] = []
 let stop = false
 
-new p5((p: p5) => {
-  p.setup = () => {
-    p.createCanvas(1000, 1000)
-    p.rectMode(p.CENTER)
-  }
+const orbitCanvas = ref<HTMLDivElement>()
 
-  p.draw = () => {
-    p.translate(-position.x/minimizeRate + 500, position.y/minimizeRate + 500)
-    p.background(0)
-    
-    p.noFill()
-    p.stroke(255)
-    p.strokeWeight(2)
-    p.circle(0, 0, earthRadius/minimizeRate*2)
+onMounted(() => {
+  if( !orbitCanvas ) throw new Error("orbitCanvasがないです！！")
 
-    history.forEach((history) => {
-      p.noStroke()
-      p.fill(255, 0, 0)
-      p.circle(history.x/minimizeRate, -history.y/minimizeRate, 2)
-    })
-    
-    if( !stop ) episode()
-  }
+  new p5((p: p5) => {
+    p.setup = () => {
+      p.createCanvas(p.windowWidth * (3/5), p.windowHeight)
+      p.rectMode(p.CENTER)
+    }
+  
+    p.draw = () => {
+      p.translate(-position.x/minimizeRate + p.width/2, position.y/minimizeRate + p.height/2)
+      p.background(0)
+      
+      p.noFill()
+      p.stroke(255)
+      p.strokeWeight(2)
+      p.circle(0, 0, earthRadius/minimizeRate*2)
+  
+      history.forEach((history) => {
+        p.noStroke()
+        p.fill(14, 165, 233, 8)
+        p.circle(history.x/minimizeRate, -history.y/minimizeRate, 2)
+      })
+    }
+  }, orbitCanvas.value)
+  
+  const tps = 100/deltaTime
+  const interval = setInterval(() => {
+    episode()
+    if( stop ) clearInterval(interval)
+  }, 1000/tps)
 })
 </script>
