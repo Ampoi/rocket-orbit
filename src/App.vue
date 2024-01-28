@@ -23,7 +23,9 @@
               class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
           </div>
         </div>
-        <button class="px-3 py-2 rounded-lg bg-sky-500 text-white text-center font-chakra text-lg tracking-wide">
+        <button
+          class="px-3 py-2 rounded-lg bg-sky-500 text-white text-center font-chakra text-lg tracking-wide"
+          @click="launch">
           LAUNCH
         </button>
       </div>
@@ -39,60 +41,15 @@
 <script setup lang="ts">
 import p5 from "p5"
 import { onMounted, ref } from "vue";
-
-const { sqrt, sin, cos, atan } = Math
-
-//定数
-const gravitationalConstant = 6.67 * (10 ** -11) //m**3 / ( kg * (s ** -2) )
-const earthRadius = 6.37 * (10**6) //m
-const earthMass = 5.96 * (10**24) //kg
-const deltaTime = 0.5 //s
-
-const getGravitationalAcceleration = (height: number) => gravitationalConstant * earthMass / ( ( height + earthRadius ) ** 2 )
-const getPosition = (
-  height: number,
-  angleFromEarth: number
-) => {
-  return {
-    x: (earthRadius + height) * sin(angleFromEarth),
-    y: (earthRadius + height) * cos(angleFromEarth)
-  }
-}
-
-let velocity = 10000
-let angle = 1/3 * Math.PI
-let height = 0
-let angleFromEarth = 0
-let position = getPosition(height, angleFromEarth)
-
-const episode = () => {
-  const horizontalVelocity            = velocity * sin(angle)
-  const horizontalDisplacementAmount  = horizontalVelocity * deltaTime
-
-  const verticalVelocity            = velocity * cos(angle) - getGravitationalAcceleration(height) * deltaTime
-  const verticalDisplacementAmount  = verticalVelocity * deltaTime
-
-  velocity        = sqrt(horizontalVelocity ** 2 + verticalVelocity ** 2)
-  
-  const newAngle = atan(horizontalVelocity / verticalVelocity)
-  angle = newAngle < 0 ? newAngle + Math.PI : newAngle
-
-  angleFromEarth  += atan(horizontalDisplacementAmount / (earthRadius + height + verticalDisplacementAmount))
-  height          = sqrt(horizontalDisplacementAmount ** 2 + (earthRadius + height + verticalDisplacementAmount) ** 2) - earthRadius
-
-  if( height < 0 ){
-    stop = true
-  }
-
-  position = getPosition(height, angleFromEarth)
-
-  history.push(position)
-}
+import { Engine, earthRadius } from "./utils/engine"
 
 const minimizeRate = 10 ** 4 * 5
 
-const history: Record<"x" | "y", number>[] = []
-let stop = false
+let engine = new Engine()
+
+const launch = () => {
+  engine.start()
+}
 
 const orbitCanvas = ref<HTMLDivElement>()
 
@@ -106,7 +63,7 @@ onMounted(() => {
     }
   
     p.draw = () => {
-      p.translate(-position.x/minimizeRate + p.width/2, position.y/minimizeRate + p.height/2)
+      p.translate(-engine.position.x/minimizeRate + p.width/2, engine.position.y/minimizeRate + p.height/2)
       p.background(0)
       
       p.noFill()
@@ -114,18 +71,12 @@ onMounted(() => {
       p.strokeWeight(2)
       p.circle(0, 0, earthRadius/minimizeRate*2)
   
-      history.forEach((history) => {
+      engine.history.forEach((history) => {
         p.noStroke()
         p.fill(14, 165, 233, 8)
         p.circle(history.x/minimizeRate, -history.y/minimizeRate, 2)
       })
     }
   }, orbitCanvas.value)
-  
-  const tps = 100/deltaTime
-  const interval = setInterval(() => {
-    episode()
-    if( stop ) clearInterval(interval)
-  }, 1000/tps)
 })
 </script>
