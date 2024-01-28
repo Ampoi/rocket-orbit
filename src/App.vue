@@ -3,24 +3,43 @@
     <div ref="orbitCanvas"/>
     <div class="p-4 flex flex-col gap-4 grow">
       <div class="flex flex-col gap-4 border-sky-500/60 text-sky-500 border-[1px] px-4 py-3 grow bg-sky-500/20 rounded-xl">
-        <div class="flex flex-col gap-4 grow">
+        <div class="flex flex-col gap-4 grow font-chakra">
           <div class="flex flex-row gap-4 items-center">
-            <p class="font-chakra tracking-wider">VELOCITY</p>
+            <p class="tracking-wider basis-20">VELOCITY</p>
             <input
               type="number"
-              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10"
+              v-model="setting.velocity">
           </div>
           <div class="flex flex-row gap-4 items-center">
-            <p class="font-chakra tracking-wider">ANGLE</p>
+            <p class="tracking-wider basis-20">ANGLE</p>
             <input
               type="number"
-              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10"
+              v-model="setting.angle">
           </div>
           <div class="flex flex-row gap-4 items-center">
-            <p class="font-chakra tracking-wider">HEIGHT</p>
+            <p class="tracking-wider basis-20">HEIGHT</p>
             <input
               type="number"
-              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10">
+              class="outline-none text-sky-500 border-b-[1px] px-1.5 py-1 border-sky-500 bg-sky-500/10"
+              v-model="setting.height">
+          </div>
+          <div class="flex flex-row gap-4">
+            <p class="basis-20">ANGLE</p>
+            <p>{{ Math.round(projectileInformation.angle / Math.PI * 180 * 100) / 100 }}</p>
+          </div>
+          <div class="flex flex-row gap-4">
+            <p class="basis-20">HEIGHT</p>
+            <p>{{ Math.round(projectileInformation.height) }}</p>
+          </div>
+          <div class="flex flex-row gap-4">
+            <p class="basis-20">ANGLE_FROM_EARTH</p>
+            <p>{{ Math.round(projectileInformation.angleFromEarth / Math.PI * 180 * 100) / 100 }}</p>
+          </div>
+          <div class="flex flex-row gap-4">
+            <p class="basis-20">VELOCITY</p>
+            <p>{{ Math.round(projectileInformation.velocity * 100) / 100 }}</p>
           </div>
         </div>
         <button
@@ -40,15 +59,60 @@
 </template>
 <script setup lang="ts">
 import p5 from "p5"
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import { Engine, earthRadius } from "./utils/engine"
 
 const minimizeRate = 10 ** 4 * 5
 
-let engine = new Engine()
+const setting = reactive({
+  velocity: 10000,
+  angle: 60,
+  height: 0
+})
+
+const getSettingForEngine = () => {
+  return {
+    ...setting,
+    angle: setting.angle / 180 * Math.PI
+  }
+}
+
+let engine = new Engine(getSettingForEngine())
+let engineInterval: number
+
+const projectileInformation = reactive({
+  angle: engine.angle,
+  height: engine.height,
+  angleFromEarth: engine.angleFromEarth,
+  velocity: engine.velocity
+})
+
+watch(setting, () => {
+  engine = new Engine(getSettingForEngine())
+})
 
 const launch = () => {
-  engine.start()
+  engine = new Engine(getSettingForEngine())
+
+  const tps = 100 / engine.deltaTime
+  let i = 0
+  engineInterval = setInterval(() => {
+      const stop = engine.episode()
+      
+      projectileInformation.angle          = engine.angle
+      projectileInformation.height         = engine.height
+      projectileInformation.angleFromEarth = engine.angleFromEarth
+      projectileInformation.velocity       = engine.velocity
+      
+      if( stop ) clearInterval(engineInterval)
+
+      if( 200 < i && i < 2200 ){
+        engine.velocity += 10
+        console.log("aa")
+      }
+
+      i += 1
+  }, 1000/tps)
 }
 
 const orbitCanvas = ref<HTMLDivElement>()
@@ -73,7 +137,7 @@ onMounted(() => {
   
       engine.history.forEach((history) => {
         p.noStroke()
-        p.fill(14, 165, 233, 8)
+        p.fill(15, 100, 140)
         p.circle(history.x/minimizeRate, -history.y/minimizeRate, 2)
       })
     }
