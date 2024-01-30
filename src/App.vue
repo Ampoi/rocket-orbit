@@ -43,6 +43,17 @@
           </div>
         </div>
         <button
+          class="flex flex-row gap-4"
+          @click="ignitionEngine"
+          v-for="engine in engines">
+          <p class="basis">MAIN_ENGINE</p>
+          <div class="bg-sky-500/20 grow h-full">
+            <div
+              class="h-full bg-sky-500"
+              :style="{ width: `${Math.round(engine.fuel / engine.capacity * 100)}%` }"/>
+          </div>
+        </button>
+        <button
           class="px-3 py-2 rounded-lg bg-sky-500 text-white text-center font-chakra text-lg tracking-wide"
           @click="launch">
           LAUNCH
@@ -91,11 +102,30 @@ watch(setting, () => {
   engine = new Engine(getSettingForEngine())
 })
 
+const engines = reactive<{
+  [key: string]: {
+    force: number
+    inOperation: boolean
+    fuel: number
+    capacity: number
+  }
+}>({
+  mainEngine: {
+    force: 10,
+    inOperation: false,
+    fuel: 1000,
+    capacity: 1000
+  }
+})
+
+const ignitionEngine = () => {
+  engines['mainEngine'].inOperation = true
+}
+
 const launch = () => {
   engine = new Engine(getSettingForEngine())
 
   const tps = 100 / engine.deltaTime
-  let i = 0
   engineInterval = setInterval(() => {
       const stop = engine.episode()
       
@@ -103,15 +133,15 @@ const launch = () => {
       projectileInformation.height         = engine.height
       projectileInformation.angleFromEarth = engine.angleFromEarth
       projectileInformation.velocity       = engine.velocity
+
+      Object.entries(engines).forEach(([ _, engineData ]) => {
+        if(engineData.fuel > 0 && engineData.inOperation){
+          engine.velocity += engineData.force
+          engineData.fuel -= 1
+        }
+      })
       
       if( stop ) clearInterval(engineInterval)
-
-      if( 200 < i && i < 2200 ){
-        engine.velocity += 10
-        console.log("aa")
-      }
-
-      i += 1
   }, 1000/tps)
 }
 
@@ -135,11 +165,21 @@ onMounted(() => {
       p.strokeWeight(2)
       p.circle(0, 0, earthRadius/minimizeRate*2)
   
+      p.noStroke()
+      p.fill(15, 100, 140)
       engine.history.forEach((history) => {
-        p.noStroke()
-        p.fill(15, 100, 140)
         p.circle(history.x/minimizeRate, -history.y/minimizeRate, 2)
       })
+
+      p.fill(14, 165, 233)
+      p.translate(engine.position.x/minimizeRate, -engine.position.y/minimizeRate)
+      const size  = 8
+      p.rotate(engine.angle + engine.angleFromEarth)
+      p.triangle(
+        -size*0.8, size,
+        0, -size,
+        size*0.8, size
+      )
     }
   }, orbitCanvas.value)
 })
